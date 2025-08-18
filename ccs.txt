@@ -1,156 +1,239 @@
-
-✅ APPROVED: 5374100785122305|12|26|699 : Payment successfully ✅ | BIN: 537410 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5386100000331067|02|27|995 : Payment successfully ✅ | BIN: 538610 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5388757060113442|02|28|542 : Payment successfully ✅ | BIN: 538875 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5388757060113442|02|28|542 : Payment successfully ✅ | BIN: 538875 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5389236193624012|07|28|582 : Payment successfully ✅ | BIN: 538923 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5392250387002062|06|27|178 : Payment successfully ✅ | BIN: 539225 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5393741104841831|09|27|697 : Payment successfully ✅ | BIN: 539374 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5394830017102610|01|29|137 : Payment successfully ✅ | BIN: 539483 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5396890005865006|07|28|038 : Payment successfully ✅ | BIN: 539689 | Bank: COASTAL COMMUNITY BANK | Type: Debit | Brand: Mastercard | Country: US | Time: 15s
-
-✅ APPROVED: 5396890349432133|12|29|224 : Payment successfully ✅ | BIN: 539689 | Bank: COASTAL COMMUNITY BANK | Type: Debit | Brand: Mastercard | Country: US | Time: 15s
-
-✅ APPROVED: 5399767139215240|02|26|732 : Payment successfully ✅ | BIN: 539976 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5399767178896967|12|27|298 : Payment successfully ✅ | BIN: 539976 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5399767149985576|08|26|942 : Payment successfully ✅ | BIN: 539976 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5399834492783600|03|26|997 : Payment successfully ✅ | BIN: 539983 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-✅ APPROVED: 5399834418566378|11|27|810 : Payment successfully ✅ | BIN: 539983 | Bank: N/A | Type: Unknown | Brand: Unknown | Country: N/A | Time: 15s
-
-𝐂𝐀𝐑𝐃: 5371760040403510|12|26|283
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 537176-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: PT. BANK NEGARA INDONESIA (PERSERO) TBK.
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: INDONESIA
-
-𝐓𝐢𝐦𝐞: 11.9 seconds
-
-𝐂𝐀𝐑𝐃: 5371760080869034|07|28|696
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 537176-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: PT. BANK NEGARA INDONESIA (PERSERO) TBK.
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: INDONESIA
-
-𝐓𝐢𝐦𝐞: 13.4 seconds
-
-𝐂𝐀𝐑𝐃: 5375503820442092|09|25|656
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 537550-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: PROCREDIT BANK AD SKOPJE
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: REPUBLIC OF MACEDONIA
-
-𝐓𝐢𝐦𝐞: 8.0 seconds
-
-𝐂𝐀𝐑𝐃: 5376649020564547|06|28|062
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 537664-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: AXOS BANK
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: UNITED STATES
-
-𝐓𝐢𝐦𝐞: 9.0 seconds
-
-𝐂𝐀𝐑𝐃: 5388757060113442|02|28|542
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 538875-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: REPUBLIC BANK & TRUST COMPANY
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: UNITED STATES
-
-𝐓𝐢𝐦𝐞: 20.6 seconds
-
-𝐂𝐀𝐑𝐃: 5388757069808554|02|28|966
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 538875-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: REPUBLIC BANK & TRUST COMPANY
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: UNITED STATES
-
-𝐓𝐢𝐦𝐞: 24.8 seconds
-
-𝐂𝐀𝐑𝐃: 5389236193624012|07|28|582
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 538923-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: PATHWARD, NATIONAL ASSOCIATION
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: UNITED STATES
-
-𝐓𝐢𝐦𝐞: 22.2 seconds
-
-𝐂𝐀𝐑𝐃: 5392250387002062|06|27|178
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 539225-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: REPUBLIC BANK & TRUST COMPANY
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: UNITED STATES
-
-𝐓𝐢𝐦𝐞: 23.1 seconds
-
-𝐂𝐀𝐑𝐃: 5393741104841831|09|27|697
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 539374-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: PAPARA ELEKTRONIK PARA VE ODEM
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: TURKEY
-
-𝐓𝐢𝐦𝐞: 15.4 seconds
-
-𝐂𝐀𝐑𝐃: 5394830017102610|01|29|137
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 539483-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: NETWORK ONLY
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: UNITED STATES
-
-𝐓𝐢𝐦𝐞: 28.4 seconds
-
-𝐂𝐀𝐑𝐃: 5396351006108672|09|25|920
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 539635-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: GREEN DOT BANK
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: UNITED STATES
-
-𝐓𝐢𝐦𝐞: 7.8 seconds
-
-𝐂𝐀𝐑𝐃: 5396890241138382|01|27|277
-𝐆𝐚𝐭𝐞𝐰𝐚𝐲: Stripe Auth
-𝐑𝐞𝐬𝐩𝐨𝐧𝐬𝐞: Approved ✅✅
-
-𝐁𝐢𝐧 𝐈𝐧𝐟𝐨: 539689-DEBIT - MASTERCARD
-𝐁𝐚𝐧𝐤: COASTAL COMMUNITY BANK
-𝐂𝐨𝐮𝐧𝐭𝐫𝐲: UNITED STATES
-
-𝐓𝐢𝐦𝐞: 11.5 seconds
-
-APPROVED: 4100390606280671|08|25|781 : Payment successfully ✅ | BIN: 410039 | Bank: CITIBANK, N.A.- COSTCO | Type: Credit | Brand: Visa | Country: US | Time: 15s
-
-APPROVED: 4100390608198624|08|25|564 : Payment successfully ✅ | BIN: 410039 | Bank: CITIBANK, N.A.- COSTCO | Type: Credit | Brand: Visa | Country: US | Time: 15s
-
-APPROVED: 4100390619682616|08|25|103 : Payment successfully ✅ | BIN: 410039 | Bank: CITIBANK, N.A.- COSTCO | Type: Credit | Brand: Visa | Country: US | Time: 15s
+ðŸ’³ Card: 5396890005865006|07|28|038
+BIN: 539689
+Bank: COASTAL COMMUNITY BANK
+Brand: Mastercard
+Country: US
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5396890349432133|12|29|224
+BIN: 539689
+Bank: COASTAL COMMUNITY BANK
+Brand: Mastercard
+Country: US
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5374100785122305|12|26|699
+BIN: 537410
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5386100000331067|02|27|995
+BIN: 538610
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5388757060113442|02|28|542
+BIN: 538875
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5388757060113442|02|28|542
+BIN: 538875
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5389236193624012|07|28|582
+BIN: 538923
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5392250387002062|06|27|178
+BIN: 539225
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5393741104841831|09|27|697
+BIN: 539374
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5394830017102610|01|29|137
+BIN: 539483
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5399767139215240|02|26|732
+BIN: 539976
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5399767178896967|12|27|298
+BIN: 539976
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5399767149985576|08|26|942
+BIN: 539976
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5399834492783600|03|26|997
+BIN: 539983
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5399834418566378|11|27|810
+BIN: 539983
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 5371760040403510|12|26|283
+BIN: 537176
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5371760080869034|07|28|696
+BIN: 537176
+Bank: NEGARA INDONESIA (PERSERO) TBK. Country: INDONESIA Time: 11.9 seconds CARD: 5371760080869034
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5375503820442092|09|25|656
+BIN: 537550
+Bank: NEGARA INDONESIA (PERSERO) TBK. Country: INDONESIA Time: 13.4 seconds CARD: 5375503820442092
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5376649020564547|06|28|062
+BIN: 537664
+Bank: AD SKOPJE Country: REPUBLIC OF MACEDONIA Time: 8.0 seconds CARD: 5376649020564547
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5388757060113442|02|28|542
+BIN: 538875
+Bank: Country: UNITED STATES Time: 9.0 seconds CARD: 5388757060113442
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5388757069808554|02|28|966
+BIN: 538875
+Bank: & TRUST COMPANY Country: UNITED STATES Time: 20.6 seconds CARD: 5388757069808554
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5389236193624012|07|28|582
+BIN: 538923
+Bank: & TRUST COMPANY Country: UNITED STATES Time: 24.8 seconds CARD: 5389236193624012
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5392250387002062|06|27|178
+BIN: 539225
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5393741104841831|09|27|697
+BIN: 539374
+Bank: & TRUST COMPANY Country: UNITED STATES Time: 23.1 seconds CARD: 5393741104841831
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5394830017102610|01|29|137
+BIN: 539483
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5396351006108672|09|25|920
+BIN: 539635
+Bank: N/A
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 5396890241138382|01|27|277
+BIN: 539689
+Bank: Country: UNITED STATES Time: 7.8 seconds CARD: 5396890241138382
+Brand: Unknown
+Country: N/A
+Status: Approved âœ…
+Time: N/A
+----------------------------------------
+ðŸ’³ Card: 4100390606280671|08|25|781
+BIN: 410039
+Bank: Country: UNITED STATES Time: 11.5 seconds APPROVED: 4100390606280671
+Brand: Visa
+Country: US
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 4100390608198624|08|25|564
+BIN: 410039
+Bank: CITIBANK, N.A.- COSTCO
+Brand: Visa
+Country: US
+Status: Unknown
+Time: 15s
+----------------------------------------
+ðŸ’³ Card: 4100390619682616|08|25|103
+BIN: 410039
+Bank: CITIBANK, N.A.- COSTCO
+Brand: Visa
+Country: US
+Status: Unknown
+Time: 15s
