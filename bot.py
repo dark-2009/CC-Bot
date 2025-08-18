@@ -1,14 +1,14 @@
 import logging
 import asyncio
+import re
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from aiogram.filters import Command
-import re
 
 # === CONFIG ===
-BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"   # ⬅️ replace with your real token
+BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"   # ⚠️ Replace with your token
 CCS_FILE = "ccs.txt"
-QR_IMAGE = "qr_placeholder.png"  # put your QR code image file later
+QR_IMAGE = "qr_placeholder.png"       # put your QR code image file here
 
 # === LOGGING ===
 logging.basicConfig(level=logging.INFO)
@@ -17,18 +17,29 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+# Keep track of users waiting for UTR
+waiting_for_utr = {}
+
 # === HELPERS ===
-def load_cards_by_brand(brand: str) -> str:
-    """Parse ccs.txt and return all lines containing the brand (Visa/Mastercard/Amex)."""
+def load_cards_by_brand(brand: str) -> list[str]:
+    """Parse ccs.txt and return chunks of lines containing the brand."""
     try:
         with open(CCS_FILE, "r", encoding="utf-8") as f:
             lines = f.readlines()
         filtered = [line.strip() for line in lines if brand.lower() in line.lower()]
         if not filtered:
-            return f"❌ No {brand} cards found."
-        return "\n".join(filtered[:30])  # send first 30 to avoid flooding
+            return [f"❌ No {brand} cards found."]
+
+        # Split into chunks of 40 lines per message
+        chunks = []
+        for i in range(0, len(filtered), 40):
+            chunk = "\n".join(filtered[i:i+40])
+            chunks.append(chunk)
+        # Insert summary at the top
+        chunks.insert(0, f"📊 Found {len(filtered)} {brand.title()} cards in database.")
+        return chunks
     except Exception as e:
-        return f"⚠️ Error reading file: {e}"
+        return [f"⚠️ Error reading file: {e}"]
 
 # === COMMAND HANDLERS ===
 @dp.message(Command("start"))
@@ -49,14 +60,17 @@ async def listcc_cmd(message: types.Message):
 @dp.callback_query()
 async def handle_callback(query: types.CallbackQuery):
     if query.data == "cat_mastercard":
-        result = load_cards_by_brand("mastercard")
-        await query.message.answer(f"💳 Mastercard BINs:\n\n{result}")
+        results = load_cards_by_brand("mastercard")
+        for block in results:
+            await query.message.answer(block)
     elif query.data == "cat_visa":
-        result = load_cards_by_brand("visa")
-        await query.message.answer(f"💳 Visa BINs:\n\n{result}")
+        results = load_cards_by_brand("visa")
+        for block in results:
+            await query.message.answer(block)
     elif query.data == "cat_amex":
-        result = load_cards_by_brand("amex")
-        await query.message.answer(f"💳 American Express BINs:\n\n{result}")
+        results = load_cards_by_brand("amex")
+        for block in results:
+            await query.message.answer(block)
     elif query.data == "cat_vip":
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="💎 Amex Platinum - $22", callback_data="vip_amex_platinum")],
@@ -84,17 +98,21 @@ async def handle_callback(query: types.CallbackQuery):
     # VIP product selection
     elif query.data.startswith("vip_"):
         product = query.data.replace("vip_", "").replace("_", " ").title()
+        waiting_for_utr[query.from_user.id] = product
         await query.message.answer(f"✅ You selected: {product}\n\nPlease send your UTR number here:")
 
-        # Register next step for UTR input
-        @dp.message()
-        async def utr_handler(msg: types.Message):
-            utr = msg.text.strip()
-            if re.match(r"^[0-9A-Za-z]{6,}$", utr):  # basic validation
-                await msg.answer("🕒 UTR received. Please wait up to 24 hours for verification.\n"
-                                 "Your CC will be delivered to this chat once verified ✅")
-            else:
-                await msg.answer("❌ Invalid UTR format. Please try again.")
+# === MESSAGE HANDLER (UTR) ===
+@dp.message()
+async def handle_message(msg: types.Message):
+    user_id = msg.from_user.id
+    if user_id in waiting_for_utr:
+        utr = msg.text.strip()
+        if re.match(r"^[0-9A-Za-z]{6,}$", utr):  # basic validation
+            product = waiting_for_utr.pop(user_id)
+            await msg.answer(f"🕒 UTR received for {product}. Please wait up to 24 hours for verification.\n"
+                             "Your CC will be delivered to this chat once verified ✅")
+        else:
+            await msg.answer("❌ Invalid UTR format. Please try again.")
 
 # === MAIN ===
 async def main():
