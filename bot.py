@@ -1,14 +1,18 @@
 import logging
 import asyncio
 import re
+import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputFile
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.filters import Command
 
 # === CONFIG ===
-BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"   # ⚠️ Replace with your token
-CCS_FILE = "ccs.txt"
-QR_IMAGE = "qr_placeholder.png"       # put your QR code image file here
+BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"
+ADMIN_ID = 6800292901  # your chat id
+CCS_FILE = "ccs_cleaned_sorted.txt"   # make sure this file exists
+UPI_ID = "withonly.vinay@axl"
+UTR_LOG = "utr_log.txt"
+SUPPORT_LINK = "https://t.me/YourSupportHandle"  # replace with your support TG link
 
 # === LOGGING ===
 logging.basicConfig(level=logging.INFO)
@@ -17,67 +21,43 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# Store pagination states and VIP UTR states
-pagination_state = {}
+# Store UTRs waiting for validation
 waiting_for_utr = {}
+user_latest_utr = {}
 
 # === HELPERS ===
+def detect_brand(card_number: str) -> str:
+    """Identify brand by card number prefix."""
+    if card_number.startswith("4"):
+        return "visa"
+    elif card_number.startswith("5"):
+        return "mastercard"
+    elif card_number.startswith("34") or card_number.startswith("37"):
+        return "amex"
+    return "unknown"
+
 def parse_cards(brand: str) -> list[str]:
-    """Parse ccs.txt, filter by brand, normalize output, return list of cards."""
+    """Parse file and filter cards by detected brand."""
     try:
         with open(CCS_FILE, "r", encoding="utf-8") as f:
-            lines = f.read().splitlines()
+            blocks = f.read().split("-" * 40)
 
         results = []
-        buffer = []
-        for line in lines:
-            if not line.strip():
+        for block in blocks:
+            block = block.strip()
+            if not block:
                 continue
-            buffer.append(line.strip())
-            # if multiline entry ends, flush
-            if "Time:" in line or "Time:" in line.upper():
-                block = " ".join(buffer)
-                buffer = []
 
-                # Extract card number
-                card_match = re.search(r"(\d{15,16}\|\d{2}\|\d{2}\|\d+)", block)
-                card = card_match.group(1) if card_match else "Unknown"
+            card_match = re.search(r"(\d{15,16}\|\d{2}\|\d{2}\|\d+)", block)
+            card = card_match.group(1) if card_match else "Unknown"
 
-                # Extract BIN
-                bin_match = re.search(r"BIN[:\- ]+(\d+)", block, re.IGNORECASE)
-                bin_code = bin_match.group(1) if bin_match else card[:6]
-
-                # Extract Bank
-                bank_match = re.search(r"Bank[:\- ]+([^|]+)", block, re.IGNORECASE)
-                bank = bank_match.group(1).strip() if bank_match else "N/A"
-
-                # Extract Brand
-                brand_match = re.search(r"Brand[:\- ]+([^|]+)", block, re.IGNORECASE)
-                brand_name = brand_match.group(1).strip() if brand_match else "Unknown"
-
-                # Extract Country
-                country_match = re.search(r"Country[:\- ]+([^|]+)", block, re.IGNORECASE)
-                country = country_match.group(1).strip() if country_match else "N/A"
-
-                # Extract Status
-                status = "Approved ✅" if "Approved" in block else "Unknown"
-
-                # Extract Time
-                time_match = re.search(r"Time[: ]+([0-9.]+s)", block, re.IGNORECASE)
-                time_taken = time_match.group(1) if time_match else "N/A"
-
-                formatted = (
-                    f"💳 Card: {card}\n"
-                    f"BIN: {bin_code} | Bank: {bank}\n"
-                    f"Brand: {brand_name} | Country: {country}\n"
-                    f"Status: {status} | Time: {time_taken}"
-                )
-                if brand.lower() in formatted.lower():
-                    results.append(formatted)
+            detected = detect_brand(card.split("|")[0]) if card != "Unknown" else "unknown"
+            if detected == brand:
+                results.append(block.strip())
 
         return results
     except Exception as e:
-        return [f"⚠️ Error parsing file: {e}"]
+        return [f"⚠️ Error reading file: {e}"]
 
 def get_page(data: list[str], page: int, page_size: int = 5):
     """Return paginated slice and total pages."""
@@ -85,6 +65,34 @@ def get_page(data: list[str], page: int, page_size: int = 5):
     start = page * page_size
     end = start + page_size
     return data[start:end], total_pages
+
+def log_transaction(user_id, product, utr):
+    """Save UTR to log file with PENDING status."""
+    entry = (
+        f"User {user_id} | Product: {product} | UTR: {utr}\n"
+        f"Status: PENDING\n"
+        f"{'-'*40}\n"
+    )
+    with open(UTR_LOG, "a", encoding="utf-8") as f:
+        f.write(entry)
+
+def check_transaction_status(user_id, utr):
+    """Check if UTR is approved in log file."""
+    if not os.path.exists(UTR_LOG):
+        return "NOT_FOUND"
+
+    with open(UTR_LOG, "r", encoding="utf-8") as f:
+        content = f.read().split("-" * 40)
+
+    for block in content:
+        if f"User {user_id}" in block and utr in block:
+            if "APPROVED" in block:
+                return "APPROVED"
+            elif "PENDING" in block:
+                return "PENDING"
+            elif "DECLINED" in block:
+                return "DECLINED"
+    return "NOT_FOUND"
 
 # === COMMAND HANDLERS ===
 @dp.message(Command("start"))
@@ -116,8 +124,6 @@ async def handle_callback(query: types.CallbackQuery):
             await query.message.answer(f"❌ No {brand.title()} cards found.")
             return
 
-        pagination_state[user_id] = {"brand": brand, "page": page, "results": results}
-
         cards, total_pages = get_page(results, page, 5)
         text = f"📊 Found {len(results)} {brand.title()} cards\n\n" + "\n\n".join(cards)
 
@@ -127,7 +133,12 @@ async def handle_callback(query: types.CallbackQuery):
         if page < total_pages - 1:
             buttons.append(InlineKeyboardButton("Next ⏭", callback_data=f"cat_{brand}_{page+1}"))
 
-        kb = InlineKeyboardMarkup(inline_keyboard=[buttons] if buttons else [])
+        nav_buttons = []
+        if buttons:
+            nav_buttons.append(buttons)
+        nav_buttons.append([InlineKeyboardButton("🔙 Back to Categories", callback_data="back_to_menu")])
+
+        kb = InlineKeyboardMarkup(inline_keyboard=nav_buttons)
         await query.message.edit_text(text, reply_markup=kb)
 
     # Handle VIP menu
@@ -139,7 +150,8 @@ async def handle_callback(query: types.CallbackQuery):
             [InlineKeyboardButton(text="💎 Mastercard Platinum - $18", callback_data="vip_mc_platinum")],
             [InlineKeyboardButton(text="✨ Mastercard (10$)", callback_data="vip_mc_basic")],
             [InlineKeyboardButton(text="✨ Visa (10$)", callback_data="vip_visa_basic")],
-            [InlineKeyboardButton(text="✨ Amex (10$)", callback_data="vip_amex_basic")]
+            [InlineKeyboardButton(text="✨ Amex (10$)", callback_data="vip_amex_basic")],
+            [InlineKeyboardButton(text="🔙 Back to Categories", callback_data="back_to_menu")]
         ])
         text = (
             "🌟 *VIP Category*\n\n"
@@ -151,15 +163,37 @@ async def handle_callback(query: types.CallbackQuery):
             "Good Category (Balance up to 10k INR):\n"
             "- Mastercard: $10\n"
             "- Visa: $10\n"
-            "- Amex: $10"
+            "- Amex: $10\n\n"
+            f"💰 *Pay to UPI ID:* `{UPI_ID}`"
         )
-        await query.message.answer_photo(InputFile(QR_IMAGE), caption=text, reply_markup=kb, parse_mode="Markdown")
+        await query.message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
     # VIP product selection
     elif query.data.startswith("vip_"):
         product = query.data.replace("vip_", "").replace("_", " ").title()
         waiting_for_utr[user_id] = product
-        await query.message.answer(f"✅ You selected: {product}\n\nPlease send your UTR number here:")
+        await query.message.answer(f"✅ You selected: {product}\n\n"
+                                   f"💰 Please pay to UPI ID: `{UPI_ID}`\n"
+                                   "Then send your UTR number here:")
+
+    # Back to categories
+    elif query.data == "back_to_menu":
+        await listcc_cmd(query.message)
+
+    # Validate Transaction
+    elif query.data.startswith("validate_"):
+        utr = query.data.replace("validate_", "")
+        status = check_transaction_status(user_id, utr)
+
+        if status == "APPROVED":
+            await query.message.answer("✅ Your transaction is approved. You will get your CC within 24 hours.")
+        elif status == "PENDING":
+            await query.message.answer("⏳ Transaction still pending verification. Please wait.")
+        else:
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton("📞 Contact Support", url=SUPPORT_LINK)]
+            ])
+            await query.message.answer("❌ Payment declined or not found. Please contact support.", reply_markup=kb)
 
 # === MESSAGE HANDLER (UTR) ===
 @dp.message()
@@ -167,10 +201,28 @@ async def handle_message(msg: types.Message):
     user_id = msg.from_user.id
     if user_id in waiting_for_utr:
         utr = msg.text.strip()
-        if re.match(r"^[0-9A-Za-z]{6,}$", utr):  # basic validation
+        if re.match(r"^[0-9A-Za-z]{6,}$", utr):
             product = waiting_for_utr.pop(user_id)
-            await msg.answer(f"🕒 UTR received for {product}. Please wait up to 24 hours for verification.\n"
-                             "Your CC will be delivered to this chat once verified ✅")
+            user_latest_utr[user_id] = utr
+            log_transaction(user_id, product, utr)
+
+            # Notify admin
+            await bot.send_message(
+                ADMIN_ID,
+                f"📢 New UTR Submitted\n"
+                f"User: {user_id}\n"
+                f"Product: {product}\n"
+                f"UTR: {utr}\n"
+                f"Status: PENDING"
+            )
+
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton("✅ Validate Transaction", callback_data=f"validate_{utr}")]
+            ])
+
+            await msg.answer(f"🕒 UTR received for {product}.\n"
+                             "Please wait for verification.\n\n"
+                             "Once you think it's verified, click below:", reply_markup=kb)
         else:
             await msg.answer("❌ Invalid UTR format. Please try again.")
 
