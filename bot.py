@@ -86,7 +86,7 @@ def update_transaction_status(user_id, utr, status):
     
     # Find and update the specific transaction
     pattern = f"User {user_id}.*?UTR: {utr}.*?Status: PENDING"
-    replacement = f"User {user_id} | Product: {waiting_for_utr.get(user_id, 'Unknown')} | UTR: {utr}\nStatus: {status}"
+    replacement = f"User {user_id} | UTR: {utr}\nStatus: {status}"
     
     updated_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
     
@@ -186,7 +186,7 @@ async def handle_callback(query: types.CallbackQuery):
             "- Amex: $10\n\n"
             f"💰 *Pay to UPI ID:* `{UPI_ID}`"
         )
-        await query.message.answer(text, reply_markup=kb, parse_mode="Markdown")
+        await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
 
     # VIP product selection
     elif data.startswith("vip_"):
@@ -198,7 +198,12 @@ async def handle_callback(query: types.CallbackQuery):
 
     # Back to categories
     elif data == "back_to_menu":
-        await listcc_cmd(query.message)
+        await query.message.edit_text("📂 Choose a category:", reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💳 Mastercard", callback_data="cat_mastercard_0")],
+            [InlineKeyboardButton(text="💳 Visa", callback_data="cat_visa_0")],
+            [InlineKeyboardButton(text="💳 American Express", callback_data="cat_amex_0")],
+            [InlineKeyboardButton(text="🌟 VIP CCs", callback_data="cat_vip")]
+        ]))
 
     # Validate Transaction
     elif data.startswith("validate_"):
@@ -305,6 +310,9 @@ async def handle_message(msg: types.Message):
                              "Once you think it's verified, click below:", reply_markup=kb)
         else:
             await msg.answer("❌ Invalid UTR format. Please try again.")
+    else:
+        # If not waiting for UTR, just show the main menu
+        await listcc_cmd(msg)
 
 # === MAIN ===
 async def main():
