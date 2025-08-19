@@ -9,10 +9,10 @@ from aiogram.filters import Command
 # === CONFIG ===
 BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"
 ADMIN_ID = 6800292901  # your chat id
-CCS_FILE = "ccs_cleaned_sorted.txt"   # make sure this file exists
+CCS_FILE = "ccs.txt"   # make sure this file exists
 UPI_ID = "withonly.vinay@axl"
 UTR_LOG = "utr_log.txt"
-SUPPORT_LINK = "https://t.me/YourSupportHandle"  # replace with your support TG link
+SUPPORT_LINK = "https://t.me/Alone120122"  # replace with your support TG link
 
 # === LOGGING ===
 logging.basicConfig(level=logging.INFO)
