@@ -293,7 +293,7 @@ async def handle_message(msg: types.Message):
             
             await bot.send_message(
                 ADMIN_ID,
-                f"🆔 New UTR Submitted\n"
+                f"🫆 New UTR Submitted\n"
                 f"User: {user_id}\n"
                 f"Product: {product}\n"
                 f"UTR: {utr}\n"
