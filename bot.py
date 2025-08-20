@@ -2,6 +2,7 @@ import logging
 import asyncio
 import re
 import os
+import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.filters import Command
@@ -9,10 +10,10 @@ from aiogram.filters import Command
 # === CONFIG ===
 BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"
 ADMIN_ID = 6800292901  # your chat id
-CCS_FILE = "ccs.txt"   # make sure this file exists
+CCS_URL = "https://dark-2009.github.io/CC-Bot/ccs.txt"
 UPI_ID = "withonly.vinay@axl"
 UTR_LOG = "utr_log.txt"
-SUPPORT_LINK = "https://t.me/alone120122"  # replace with your support TG link
+SUPPORT_LINK = "https://t.me/Alone120122"  # replace with your support TG link
 
 # === LOGGING ===
 logging.basicConfig(level=logging.INFO)
@@ -36,28 +37,45 @@ def detect_brand(card_number: str) -> str:
         return "amex"
     return "unknown"
 
-def parse_cards(brand: str) -> list[str]:
-    """Parse file and filter cards by detected brand."""
+async def fetch_cards():
+    """Fetch cards from the URL."""
     try:
-        with open(CCS_FILE, "r", encoding="utf-8") as f:
-            blocks = f.read().split("-" * 40)
-
-        results = []
-        for block in blocks:
-            block = block.strip()
-            if not block:
-                continue
-
-            card_match = re.search(r"(\d{15,16}\|\d{2}\|\d{2}\|\d+)", block)
-            card = card_match.group(1) if card_match else "Unknown"
-
-            detected = detect_brand(card.split("|")[0]) if card != "Unknown" else "unknown"
-            if detected == brand:
-                results.append(block.strip())
-
-        return results
+        async with aiohttp.ClientSession() as session:
+            async with session.get(CCS_URL) as response:
+                if response.status == 200:
+                    return await response.text()
+                else:
+                    logging.error(f"Failed to fetch cards: HTTP {response.status}")
+                    return None
     except Exception as e:
-        return [f"⚠️ Error reading file: {e}"]
+        logging.error(f"Error fetching cards: {e}")
+        return None
+
+def parse_cards(card_data: str, brand: str) -> list[str]:
+    """Parse card data and filter by brand."""
+    if not card_data:
+        return ["⚠️ Error: No card data available"]
+    
+    try:
+        lines = card_data.strip().split('\n')
+        results = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Extract card number (first part before any separator)
+            card_match = re.search(r'(\d{15,16})', line)
+            if card_match:
+                card_number = card_match.group(1)
+                detected = detect_brand(card_number)
+                if detected == brand:
+                    results.append(line)
+        
+        return results if results else [f"❌ No {brand.title()} cards found"]
+    except Exception as e:
+        return [f"⚠️ Error parsing cards: {e}"]
 
 def get_page(data: list[str], page: int, page_size: int = 5):
     """Return paginated slice and total pages."""
@@ -139,13 +157,19 @@ async def handle_callback(query: types.CallbackQuery):
         _, brand, page_str = data.split("_")
         page = int(page_str)
 
-        results = parse_cards(brand)
-        if not results:
-            await query.message.answer(f"❌ No {brand.title()} cards found.")
+        # Fetch cards from URL
+        card_data = await fetch_cards()
+        if not card_data:
+            await query.answer("❌ Failed to fetch cards. Please try again later.", show_alert=True)
+            return
+
+        results = parse_cards(card_data, brand)
+        if not results or "❌ No" in results[0] or "⚠️ Error" in results[0]:
+            await query.answer(results[0] if results else "No cards found", show_alert=True)
             return
 
         cards, total_pages = get_page(results, page, 5)
-        text = f"📊 Found {len(results)} {brand.title()} cards\n\n" + "\n\n".join(cards)
+        text = f"📊 Found {len(results)} {brand.title()} cards\nPage {page+1}/{total_pages}\n\n" + "\n\n".join(cards[:10])  # Limit to 10 cards per page
 
         buttons = []
         if page > 0:
@@ -159,7 +183,17 @@ async def handle_callback(query: types.CallbackQuery):
         nav_buttons.append([InlineKeyboardButton("🔙 Back to Categories", callback_data="back_to_menu")])
 
         kb = InlineKeyboardMarkup(inline_keyboard=nav_buttons)
-        await query.message.edit_text(text, reply_markup=kb)
+        
+        try:
+            await query.message.edit_text(text, reply_markup=kb)
+        except Exception as e:
+            # If message is too long, split it
+            if "message is too long" in str(e):
+                half = len(text) // 2
+                await query.message.edit_text(text[:half], reply_markup=kb)
+                await query.message.answer(text[half:])
+            else:
+                await query.answer("Error displaying cards", show_alert=True)
 
     # Handle VIP menu
     elif data == "cat_vip":
@@ -186,7 +220,10 @@ async def handle_callback(query: types.CallbackQuery):
             "- Amex: $10\n\n"
             f"💰 *Pay to UPI ID:* `{UPI_ID}`"
         )
-        await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+        try:
+            await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+        except:
+            await query.message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
     # VIP product selection
     elif data.startswith("vip_"):
@@ -198,12 +235,16 @@ async def handle_callback(query: types.CallbackQuery):
 
     # Back to categories
     elif data == "back_to_menu":
-        await query.message.edit_text("📂 Choose a category:", reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+        kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="💳 Mastercard", callback_data="cat_mastercard_0")],
             [InlineKeyboardButton(text="💳 Visa", callback_data="cat_visa_0")],
             [InlineKeyboardButton(text="💳 American Express", callback_data="cat_amex_0")],
             [InlineKeyboardButton(text="🌟 VIP CCs", callback_data="cat_vip")]
-        ]))
+        ])
+        try:
+            await query.message.edit_text("📂 Choose a category:", reply_markup=kb)
+        except:
+            await query.message.answer("📂 Choose a category:", reply_markup=kb)
 
     # Validate Transaction
     elif data.startswith("validate_"):
@@ -271,13 +312,17 @@ async def handle_callback(query: types.CallbackQuery):
             f"❌ Transaction declined for user {target_user_id} (UTR: {utr}).\n"
             "User has been notified."
         )
+    
+    await query.answer()
 
 # === MESSAGE HANDLER (UTR) ===
 @dp.message()
 async def handle_message(msg: types.Message):
     user_id = msg.from_user.id
+    text = msg.text.strip()
+    
     if user_id in waiting_for_utr:
-        utr = msg.text.strip()
+        utr = text
         if re.match(r"^[0-9A-Za-z]{6,}$", utr):
             product = waiting_for_utr.pop(user_id)
             user_latest_utr[user_id] = utr
@@ -293,7 +338,7 @@ async def handle_message(msg: types.Message):
             
             await bot.send_message(
                 ADMIN_ID,
-                f"🫆 New UTR Submitted\n"
+                f"📢 New UTR Submitted\n"
                 f"User: {user_id}\n"
                 f"Product: {product}\n"
                 f"UTR: {utr}\n"
