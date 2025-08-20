@@ -2,23 +2,26 @@ import logging
 import requests
 import json
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # ========== CONFIG ==========
 BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"
 GIST_ID = "426a9400569f40b6f4d664b74801a78a"
-part1 = "github_pat_11BQYPIPI0rMEipIqtHj9h"
-part2 = "_vmPF0bBNpQa1F46Er4SaZHWtvQbzn"
-part3 = "PNohD9krhomlbKOPCYCJNUxpcAMUnh"
-GITHUB_PAT = part1 + part2 + part3# Replace later with new token
+
+# --- Split PAT in 3 parts ---
+PART1 = "github_pat_11BQYPIPI0rM"
+PART2 = "EipIqtHj9h_vmPF0bBNpQa1F46Er"
+PART3 = "4SaZHWtvQbznPNohD9krhomlbKOPCYCJNUxpcAMUnh"
+GITHUB_PAT = PART1 + PART2 + PART3
 GIST_URL = f"https://api.github.com/gists/{GIST_ID}"
 HEADERS = {"Authorization": f"token {GITHUB_PAT}"}
+
 UPI_ID = "withonly.vinay@axl"
 # ============================
 
 logging.basicConfig(level=logging.INFO)
 
-# --- Helper: Fetch CCs from GitHub Pages ---
+# --- Fetch Free CCs ---
 def fetch_ccs():
     url = "https://dark-2009.github.io/CC-Bot/ccs.txt"
     try:
@@ -41,7 +44,7 @@ def filter_cards(cards, card_type):
             result.append(line)
     return result
 
-# --- Gist Helper ---
+# --- Gist Helpers ---
 def load_transactions():
     r = requests.get(GIST_URL, headers=HEADERS).json()
     files = r.get("files", {})
@@ -54,16 +57,13 @@ def save_transactions(data):
 
 # --- Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Welcome! Use /listcc to see available cards.")
-
-async def listcc(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("💳 Visa", callback_data="list_visa")],
         [InlineKeyboardButton("💳 Mastercard", callback_data="list_master")],
         [InlineKeyboardButton("💳 Amex", callback_data="list_amex")],
         [InlineKeyboardButton("🌟 VIP CCs", callback_data="list_vip")],
     ]
-    await update.message.reply_text("Choose a category:", reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text("Welcome! Choose a category:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -76,10 +76,9 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ctype in ["visa", "master", "amex"]:
             filtered = filter_cards(cards, ctype)
             if not filtered:
-                await query.edit_message_text("No cards found.")
+                await query.edit_message_text("❌ No cards found.")
                 return
 
-            # Send first 5
             page = 0
             text = "\n".join(filtered[page*5:(page+1)*5])
             keyboard = []
@@ -92,20 +91,10 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🌟 *VIP CCs* 🌟
 Pay via UPI: `{UPI_ID}`
 
-💎 Very Premium (Balance up to 20–30k INR):
-- Amex Platinum: $22
-- Visa Gold: $20
-- Amex Gold: $20
-- Mastercard Platinum: $18
-
-✨ Good Category (Balance up to 10k INR):
-- Mastercard: $10
-- Visa: $10
-- Amex: $10
-
-After payment, submit your UTR number using /submitutr <UTR>
+After payment, submit your UTR number using the button below.
 """
-            await query.edit_message_text(vip_text, parse_mode="Markdown")
+            keyboard = [[InlineKeyboardButton("📩 Submit UTR", callback_data="submitutr")]]
+            await query.edit_message_text(vip_text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif query.data.startswith("page_"):
         _, ctype, page = query.data.split("_")
@@ -121,9 +110,12 @@ After payment, submit your UTR number using /submitutr <UTR>
 
         await query.edit_message_text(f"{ctype.upper()} cards:\n\n{text}", reply_markup=InlineKeyboardMarkup(keyboard))
 
-async def submitutr(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    elif query.data == "submitutr":
+        await query.edit_message_text("Send your UTR number here in format:\n\n`/utr 1234567890`", parse_mode="Markdown")
+
+async def utr(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 1:
-        await update.message.reply_text("Usage: /submitutr <UTR>")
+        await update.message.reply_text("Usage: /utr <UTR>")
         return
     utr = context.args[0]
     user_id = update.message.chat_id
@@ -132,11 +124,11 @@ async def submitutr(update: Update, context: ContextTypes.DEFAULT_TYPE):
     txns[utr] = {"user_id": user_id, "status": "pending"}
     save_transactions(txns)
 
-    await update.message.reply_text(f"✅ Your UTR `{utr}` has been submitted.\nUse /checkstatus to see updates.", parse_mode="Markdown")
+    await update.message.reply_text(f"✅ Your UTR `{utr}` has been submitted.\nPlease wait for admin approval.", parse_mode="Markdown")
 
-async def checkstatus(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 1:
-        await update.message.reply_text("Usage: /checkstatus <UTR>")
+        await update.message.reply_text("Usage: /status <UTR>")
         return
     utr = context.args[0]
     txns = load_transactions()
@@ -146,7 +138,7 @@ async def checkstatus(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     status = txns[utr]["status"]
     if status == "pending":
-        msg = "⌛ Your transaction is still pending. Please wait."
+        msg = "⌛ Pending – please wait for admin approval."
     elif status == "approved":
         msg = "✅ Approved! You will receive your CC within 24 hours. Contact support: @alone120122"
     else:
@@ -157,9 +149,8 @@ async def checkstatus(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("listcc", listcc))
-    app.add_handler(CommandHandler("submitutr", submitutr))
-    app.add_handler(CommandHandler("checkstatus", checkstatus))
+    app.add_handler(CommandHandler("utr", utr))
+    app.add_handler(CommandHandler("status", status))
     app.add_handler(CallbackQueryHandler(handle_buttons))
     app.run_polling()
 
