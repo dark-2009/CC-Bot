@@ -15,8 +15,7 @@ GIST_ID = "426a9400569f40b6f4d664b74801a78a"
 PART1 = "github_pat_11BQYPIPI0rMEipIqtHj9h_"
 PART2 = "vmPF0bBNpQa1F46Er4SaZHWtvQbznPNohD9"
 PART3 = "krhomlbKOPCYCJNUxpcAMUnh"
-
-GITHUB_PAT = PART1 + PART2 + PART
+GITHUB_PAT = PART1 + PART2 + PART3
 GIST_URL = f"https://api.github.com/gists/{GIST_ID}"
 HEADERS = {"Authorization": f"token {GITHUB_PAT}"}
 UPI_ID = "withonly.vinay@axl"
