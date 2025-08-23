@@ -37,31 +37,43 @@ UPI_ID = "withonly.vinay@axl"
 
 logging.basicConfig(level=logging.INFO)
 
-# --- Fetch Free CCs ---
+# --- Helper: Fetch CCs from Gist ---
 def fetch_ccs():
     try:
-        r = requests.get(CCS_URL, headers=HEADERS).json()
+        r = requests.get(GIST_URL, headers=HEADERS).json()
         files = r.get("files", {})
         if "ccs.txt" not in files:
-            print("❌ DEBUG: ccs.txt not found in gist. Files available:", files.keys())
             return []
-        content = files["ccs.txt"].get("content", "")
-        return content.strip().splitlines()
+        content = files["ccs.txt"]["content"]
+
+        cards = []
+        for block in content.split("Card:"):
+            block = block.strip()
+            if not block:
+                continue
+            first_line = block.splitlines()[0].strip()
+            if "|" in first_line:
+                cards.append(first_line)  # Example: 5396890005865006|07|28|038
+        return cards
     except Exception as e:
-        print("❌ Error fetching CCs:", e)
+        print("Error fetching CCs:", e)
         return []
 
-def filter_cards(cards, ctype):
+
+# --- Sorting CCs properly ---
+def filter_cards(cards, card_type):
     result = []
     for line in cards:
-        if not line or "|" not in line:
-            continue
         num = line.split("|")[0].strip()
-        if ctype == "visa" and num.startswith("4"):
+        if not num.isdigit():
+            continue
+
+        # Detect brand based on BIN/IIN
+        if card_type == "visa" and num.startswith("4"):
             result.append(line)
-        elif ctype == "master" and num.startswith("5"):
+        elif card_type == "master" and num.startswith("5"):
             result.append(line)
-        elif ctype == "amex" and (num.startswith("34") or num.startswith("37")):
+        elif card_type == "amex" and (num.startswith("34") or num.startswith("37")):
             result.append(line)
     return result
 
