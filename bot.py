@@ -1,7 +1,6 @@
 import logging
 import requests
 import json
-import asyncio
 from telegram import (
     Update,
     InlineKeyboardButton,
@@ -20,18 +19,17 @@ from telegram.ext import (
 BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"
 
 # Transactions Gist
-GIST_ID = "426a9400569f40b6f4d664b74801a78a"
+TXN_GIST_ID = "426a9400569f40b6f4d664b74801a78a"
 
-# 🔑 Split PAT in 3 parts
+# Split PAT 🔑
 PART1 = "github_pat_11BQYPIPI0boMKyo1ZCgKa_LMmfMm9vac"
 PART2 = "bpv1upw9PQ1mT7l2DQ3r24JDeTOOz1o5e"
 PART3 = "PTEH7RT4RE861P9f"
 GITHUB_PAT = PART1 + PART2 + PART3
 
-GIST_URL = f"https://api.github.com/gists/{GIST_ID}"
 HEADERS = {"Authorization": f"token {GITHUB_PAT}"}
 
-# Gist where CCs are stored
+# Free CC Gist
 CCS_GIST_ID = "065082e31d1aed3b8d728dbd728fbc62"
 CCS_URL = f"https://api.github.com/gists/{CCS_GIST_ID}"
 UPI_ID = "withonly.vinay@axl"
@@ -39,15 +37,18 @@ UPI_ID = "withonly.vinay@axl"
 
 logging.basicConfig(level=logging.INFO)
 
-# --- Helper: Fetch CCs from Gist ---
+# --- Fetch Free CCs ---
 def fetch_ccs():
     try:
         r = requests.get(CCS_URL, headers=HEADERS).json()
         files = r.get("files", {})
-        content = files.get("ccs.txt", {}).get("content", "")
+        if "ccs.txt" not in files:
+            print("❌ DEBUG: ccs.txt not found in gist. Files available:", files.keys())
+            return []
+        content = files["ccs.txt"].get("content", "")
         return content.strip().splitlines()
     except Exception as e:
-        print("Error fetching CCs:", e)
+        print("❌ Error fetching CCs:", e)
         return []
 
 def filter_cards(cards, ctype):
@@ -64,16 +65,18 @@ def filter_cards(cards, ctype):
             result.append(line)
     return result
 
-# --- Gist Helper ---
+# --- Gist Helpers ---
 def load_transactions():
-    r = requests.get(GIST_URL, headers=HEADERS).json()
+    url = f"https://api.github.com/gists/{TXN_GIST_ID}"
+    r = requests.get(url, headers=HEADERS).json()
     files = r.get("files", {})
     content = files.get("transactions.json", {}).get("content", "{}")
     return json.loads(content)
 
 def save_transactions(data):
+    url = f"https://api.github.com/gists/{TXN_GIST_ID}"
     payload = {"files": {"transactions.json": {"content": json.dumps(data, indent=2)}}}
-    requests.patch(GIST_URL, headers=HEADERS, json=payload)
+    requests.patch(url, headers=HEADERS, json=payload)
 
 # --- Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -88,7 +91,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     cards = fetch_ccs()
 
     if query.data.startswith("list_"):
@@ -96,7 +98,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ctype in ["visa", "master", "amex"]:
             filtered = filter_cards(cards, ctype)
             if not filtered:
-                await query.edit_message_text("❌ No cards found.")
+                await query.edit_message_text("❌ No cards found. (Check gist ccs.txt)")
                 return
             text = "\n".join(filtered[:5])
             await query.edit_message_text(f"Here are some {ctype.upper()} cards:\n\n{text}")
@@ -159,15 +161,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔎 Check Status", callback_data=f"status_{utr}")],
             [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
         ]
-        await update.message.reply_text(f"✅ Your UTR `{utr}` has been submitted.", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(
+            f"✅ Your UTR `{utr}` has been submitted.",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
         del context.user_data["waiting_for_utr"]
 
 async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     utr = query.data.replace("status_", "")
-
     txns = load_transactions()
+
     if utr not in txns:
         await query.edit_message_text("❌ UTR not found.")
         return
@@ -175,15 +181,21 @@ async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = txns[utr]["status"]
     if status == "pending":
         msg = "⌛ Your transaction is still pending. Please wait."
+        keyboard = [
+            [InlineKeyboardButton("🔎 Check Status", callback_data=f"status_{utr}")],
+            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
+        ]
     elif status == "approved":
         msg = "✅ Approved! You will receive your CC within 24 hours."
+        keyboard = [
+            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
+        ]
     else:
         msg = "❌ Declined! Wrong UTR."
+        keyboard = [
+            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
+        ]
 
-    keyboard = [
-        [InlineKeyboardButton("🔎 Check Status", callback_data=f"status_{utr}")],
-        [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
-    ]
     await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard))
 
 def main():
