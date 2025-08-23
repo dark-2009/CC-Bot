@@ -1,125 +1,126 @@
-import logging
+import logging, random, json, asyncio, io
 import requests
-import json
+from datetime import datetime
 from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup
+    Update, InlineKeyboardButton, InlineKeyboardMarkup
 )
 from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    MessageHandler,
-    filters,
-    ContextTypes,
+    Application, CallbackQueryHandler, MessageHandler,
+    ContextTypes, filters
 )
 
-# ========== CONFIG ==========
+# ---------------- CONFIG ----------------
 BOT_TOKEN = "8241360344:AAFP0_43PmJRCTa2mpv5F2q_XYixkRXTdYs"
 
-# Transactions Gist
-TXN_GIST_ID = "426a9400569f40b6f4d664b74801a78a"
+# Gist IDs
+GIST_ID_CCS = "065082e31d1aed3b8d728dbd728fbc62"   # Free CCs gist (ccs.json)
+GIST_ID_TXN = "426a9400569f40b6f4d664b74801a78a"   # Transactions gist
 
-# Split PAT 🔑
-PART1 = "github_pat_11BQYPIPI0boMKyo1ZCgKa_LMmfMm9vac"
-PART2 = "bpv1upw9PQ1mT7l2DQ3r24JDeTOOz1o5e"
-PART3 = "PTEH7RT4RE861P9f"
-GITHUB_PAT = PART1 + PART2 + PART3
-
+# Split PAT into 3 parts for safety
+GITHUB_PAT = "github_pat_" + "11BQYPIPI0" + "boMKyo1ZCgKa_LMmfMm9vacbpv1upw9PQ1mT7l2DQ3r24JDeTOOz1o5ePTEH7RT4RE861P9f"
 HEADERS = {"Authorization": f"token {GITHUB_PAT}"}
 
-# Free CC Gist
-CCS_GIST_ID = "065082e31d1aed3b8d728dbd728fbc62"
-CCS_URL = f"https://api.github.com/gists/{CCS_GIST_ID}"
+# URLs
+GIST_URL_CCS = f"https://api.github.com/gists/{GIST_ID_CCS}"
+GIST_URL_TXN = f"https://api.github.com/gists/{GIST_ID_TXN}"
+
 UPI_ID = "withonly.vinay@axl"
-# ============================
 
 logging.basicConfig(level=logging.INFO)
 
-# --- Helper: Fetch CCs from Gist ---
-def fetch_ccs():
-    try:
-        r = requests.get(GIST_URL, headers=HEADERS).json()
-        files = r.get("files", {})
-        if "ccs.txt" not in files:
-            return []
-        content = files["ccs.txt"]["content"]
-
-        cards = []
-        for block in content.split("Card:"):
-            block = block.strip()
-            if not block:
-                continue
-            first_line = block.splitlines()[0].strip()
-            if "|" in first_line:
-                cards.append(first_line)  # Example: 5396890005865006|07|28|038
-        return cards
-    except Exception as e:
-        print("Error fetching CCs:", e)
-        return []
-
-
-# --- Sorting CCs properly ---
-def filter_cards(cards, card_type):
-    result = []
-    for line in cards:
-        num = line.split("|")[0].strip()
-        if not num.isdigit():
-            continue
-
-        # Detect brand based on BIN/IIN
-        if card_type == "visa" and num.startswith("4"):
-            result.append(line)
-        elif card_type == "master" and num.startswith("5"):
-            result.append(line)
-        elif card_type == "amex" and (num.startswith("34") or num.startswith("37")):
-            result.append(line)
-    return result
-
-# --- Gist Helpers ---
+# ============ Helpers ============
 def load_transactions():
-    url = f"https://api.github.com/gists/{TXN_GIST_ID}"
-    r = requests.get(url, headers=HEADERS).json()
+    r = requests.get(GIST_URL_TXN, headers=HEADERS).json()
     files = r.get("files", {})
-    content = files.get("transactions.json", {}).get("content", "{}")
-    return json.loads(content)
+    return json.loads(files.get("transactions.json", {}).get("content", "{}"))
 
 def save_transactions(data):
-    url = f"https://api.github.com/gists/{TXN_GIST_ID}"
     payload = {"files": {"transactions.json": {"content": json.dumps(data, indent=2)}}}
-    requests.patch(url, headers=HEADERS, json=payload)
+    requests.patch(GIST_URL_TXN, headers=HEADERS, json=payload)
 
-# --- Handlers ---
+def fetch_ccs():
+    r = requests.get(GIST_URL_CCS, headers=HEADERS).json()
+    files = r.get("files", {})
+    content = files.get("ccs.json", {}).get("content", "")
+    return content.splitlines()
+
+def filter_cards(cards, brand):
+    results = []
+    current = []
+    for line in cards:
+        if line.startswith("Card:"):
+            if current: 
+                block = "\n".join(current)
+                num = current[0].split()[1].split("|")[0]
+                if brand=="visa" and num.startswith("4"): results.append(block)
+                elif brand=="master" and num.startswith("5"): results.append(block)
+                elif brand=="amex" and num.startswith(("34","37")): results.append(block)
+                current = []
+        if line.strip(): current.append(line)
+    return results
+
+# ============ CC Generator ============
+class CCGenerator:
+    def luhn_checksum(self, card_number):
+        def digits_of(n): return [int(d) for d in str(n)]
+        digits = digits_of(card_number)
+        odd, even = digits[-1::-2], digits[-2::-2]
+        checksum = sum(odd)
+        for d in even: checksum += sum(digits_of(d*2))
+        return checksum % 10
+
+    def calculate_luhn(self, partial):
+        c = self.luhn_checksum(int(partial)*10)
+        return c if c==0 else 10-c
+
+    def generate_card(self, bin_number):
+        length = 16 if not bin_number.startswith("3") else 15
+        need = length - len(bin_number) - 1
+        acc = ''.join([str(random.randint(0,9)) for _ in range(need)])
+        partial = bin_number + acc
+        check = self.calculate_luhn(partial)
+        card = partial + str(check)
+        exp = f"{random.randint(1,12):02d}|{str(random.randint(25,30))}"
+        cvv = str(random.randint(100,999))
+        return f"{card}|{exp}|{cvv}"
+
+generator = CCGenerator()
+user_states = {}
+
+# ============ Handlers ============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("💳 Visa", callback_data="list_visa")],
-        [InlineKeyboardButton("💳 Mastercard", callback_data="list_master")],
-        [InlineKeyboardButton("💳 Amex", callback_data="list_amex")],
-        [InlineKeyboardButton("🌟 VIP CCs", callback_data="list_vip")],
+        [InlineKeyboardButton("💳 Visa", callback_data="free_visa")],
+        [InlineKeyboardButton("💳 Mastercard", callback_data="free_master")],
+        [InlineKeyboardButton("💳 Amex", callback_data="free_amex")],
+        [InlineKeyboardButton("⚡ CC-GEN", callback_data="ccgen")],
+        [InlineKeyboardButton("🌟 VIP CCs", callback_data="vip_menu")]
     ]
-    await update.message.reply_text("Welcome! Choose a category:", reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text("Choose an option:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
+    data = query.data
     cards = fetch_ccs()
 
-    if query.data.startswith("list_"):
-        ctype = query.data.replace("list_", "")
-        if ctype in ["visa", "master", "amex"]:
-            filtered = filter_cards(cards, ctype)
-            if not filtered:
-                await query.edit_message_text("❌ No cards found. (Check gist ccs.txt)")
-                return
-            text = "\n".join(filtered[:5])
-            await query.edit_message_text(f"Here are some {ctype.upper()} cards:\n\n{text}")
+    # ----- Free CCs -----
+    if data.startswith("free_"):
+        brand = data.replace("free_","")
+        filtered = filter_cards(cards, brand)
+        if not filtered:
+            await query.edit_message_text("❌ No cards found. (Check gist ccs.json)")
+            return
+        text = "\n\n".join(filtered[:5])
+        await query.edit_message_text(f"Here are some {brand.upper()} cards:\n\n{text}")
 
-        elif ctype == "vip":
-            text = """
-🌟 *VIP CCs* 🌟  
+    # ----- VIP CCs -----
+    elif data=="vip_menu":
+        vip_text = """
+🌟 VIP CCs 🌟  
 
-💎 Very Premium (Balance up to 250 - 400$):  
+💎 Very Premium (Balance up to 250 - 400$ ):  
 - Amex Platinum: $22  
 - Visa Gold: $20  
 - Amex Gold: $20  
@@ -130,93 +131,120 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 - Visa: $10  
 - Amex: $10  
 """
-            keyboard = [
-                [InlineKeyboardButton("💎 Amex Platinum ($22)", callback_data="vip_amex_platinum")],
-                [InlineKeyboardButton("💎 Visa Gold ($20)", callback_data="vip_visa_gold")],
-                [InlineKeyboardButton("💎 Amex Gold ($20)", callback_data="vip_amex_gold")],
-                [InlineKeyboardButton("💎 Mastercard Platinum ($18)", callback_data="vip_master_platinum")],
-                [InlineKeyboardButton("✨ Mastercard ($10)", callback_data="vip_master")],
-                [InlineKeyboardButton("✨ Visa ($10)", callback_data="vip_visa")],
-                [InlineKeyboardButton("✨ Amex ($10)", callback_data="vip_amex")],
-                [InlineKeyboardButton("⬅️ Back to Menu", callback_data="back_menu")],
-            ]
-            await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif query.data.startswith("vip_"):
-        plan = query.data.replace("vip_", "").replace("_", " ").title()
-        text = f"You selected *{plan}*\nPay via UPI: `{UPI_ID}`"
         keyboard = [
-            [InlineKeyboardButton("✅ Paid", callback_data=f"paid_{plan}")],
-            [InlineKeyboardButton("⬅️ Back to Menu", callback_data="back_menu")],
+            [InlineKeyboardButton("Amex Platinum $22", callback_data="vip_amex_plat")],
+            [InlineKeyboardButton("Visa Gold $20", callback_data="vip_visa_gold")],
+            [InlineKeyboardButton("Amex Gold $20", callback_data="vip_amex_gold")],
+            [InlineKeyboardButton("Mastercard Platinum $18", callback_data="vip_mc_plat")],
+            [InlineKeyboardButton("Back", callback_data="back_main")]
         ]
-        await query.edit_message_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(vip_text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-    elif query.data.startswith("paid_"):
-        plan = query.data.replace("paid_", "")
-        context.user_data["waiting_for_utr"] = plan
+    elif data.startswith("vip_"):
+        await query.edit_message_text(
+            f"You selected {data.replace('vip_','').title()}\nPay via UPI: {UPI_ID}",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Paid", callback_data=f"utr_{data}")],
+                [InlineKeyboardButton("⬅️ Back", callback_data="vip_menu")]
+            ])
+        )
+
+    elif data.startswith("utr_"):
+        user_states[query.from_user.id] = {"awaiting":"utr"}
         await query.edit_message_text("Please enter your UTR below 👇")
 
-    elif query.data == "back_menu":
-        await start(update, context)
+    elif data=="back_main":
+        await start(query, context)
+
+    # ----- CC-GEN -----
+    elif data=="ccgen":
+        user_states[query.from_user.id] = {"awaiting":"bin"}
+        await query.edit_message_text("Enter BIN (6-9 digits):")
+
+    elif data.startswith("format_"):
+        fmt = data.split("_")[1]
+        state = user_states.get(query.from_user.id,{})
+        bin_list = state.get("bin_list", [])
+        qty = state.get("qty",1)
+        results = [generator.generate_card(b) for b in bin_list for _ in range(qty)]
+        output = "\n".join(results)
+        if len(output)>4000:
+            bio = io.BytesIO(output.encode()); bio.name=f"ccgen.{fmt}"
+            await query.message.reply_document(bio)
+        else:
+            await query.message.reply_text(f"```\n{output}\n```", parse_mode="Markdown")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if "waiting_for_utr" in context.user_data:
+    uid = update.message.from_user.id
+    state = user_states.get(uid,{})
+
+    if state.get("awaiting")=="utr":
         utr = update.message.text.strip()
-        user_id = update.message.chat_id
-        plan = context.user_data["waiting_for_utr"]
-
         txns = load_transactions()
-        txns[utr] = {"user_id": user_id, "status": "pending", "plan": plan}
+        txns[utr]={"user_id":uid,"status":"pending"}
         save_transactions(txns)
-
-        keyboard = [
-            [InlineKeyboardButton("🔎 Check Status", callback_data=f"status_{utr}")],
-            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
+        kb = [
+            [InlineKeyboardButton("🔄 Check Status", callback_data=f"check_{utr}")],
+            [InlineKeyboardButton("📞 Support", url="https://t.me/alone120122")]
         ]
         await update.message.reply_text(
             f"✅ Your UTR `{utr}` has been submitted.",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(kb)
         )
-        del context.user_data["waiting_for_utr"]
+        user_states.pop(uid,None)
 
-async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    utr = query.data.replace("status_", "")
-    txns = load_transactions()
+    elif state.get("awaiting")=="bin":
+        bin_number = update.message.text.strip()
+        if not (bin_number.isdigit() and 6<=len(bin_number)<=9):
+            await update.message.reply_text("Invalid BIN. Try again:")
+            return
+        state["bin_list"]=[bin_number]; state["awaiting"]="qty"
+        user_states[uid]=state
+        await update.message.reply_text("BIN accepted. Enter quantity (1-20):")
 
-    if utr not in txns:
-        await query.edit_message_text("❌ UTR not found.")
-        return
-
-    status = txns[utr]["status"]
-    if status == "pending":
-        msg = "⌛ Your transaction is still pending. Please wait."
-        keyboard = [
-            [InlineKeyboardButton("🔎 Check Status", callback_data=f"status_{utr}")],
-            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
+    elif state.get("awaiting")=="qty":
+        qty = update.message.text.strip()
+        if not qty.isdigit() or not (1<=int(qty)<=20):
+            await update.message.reply_text("Invalid qty. Try again:")
+            return
+        state["qty"]=int(qty); state["awaiting"]="format"
+        user_states[uid]=state
+        kb=[
+            [InlineKeyboardButton("Plain",callback_data="format_plain")],
+            [InlineKeyboardButton("JSON",callback_data="format_json")]
         ]
-    elif status == "approved":
-        msg = "✅ Approved! You will receive your CC within 24 hours."
-        keyboard = [
-            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
-        ]
+        await update.message.reply_text("Choose output format:",reply_markup=InlineKeyboardMarkup(kb))
+
     else:
-        msg = "❌ Declined! Wrong UTR."
-        keyboard = [
-            [InlineKeyboardButton("📞 Contact Support", url="https://t.me/alone120122")],
+        await update.message.reply_text("Use buttons to interact.")
+
+async def check_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query=update.callback_query; await query.answer()
+    utr=query.data.split("_")[1]
+    txns=load_transactions()
+    if utr not in txns:
+        await query.edit_message_text("❌ UTR not found."); return
+    status=txns[utr]["status"]
+    if status=="pending":
+        kb=[
+            [InlineKeyboardButton("🔄 Check Again",callback_data=f"check_{utr}")],
+            [InlineKeyboardButton("📞 Support",url="https://t.me/alone120122")]
         ]
+        await query.edit_message_text("⌛ Pending. Please wait.",reply_markup=InlineKeyboardMarkup(kb))
+    elif status=="approved":
+        await query.edit_message_text("✅ Approved! You will receive your CC within 24 hours.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📞 Support",url="https://t.me/alone120122")]]))
+    else:
+        await query.edit_message_text("❌ Declined! Wrong UTR.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📞 Support",url="https://t.me/alone120122")]]))
 
-    await query.edit_message_text(msg, reply_markup=InlineKeyboardMarkup(keyboard))
-
+# ============ MAIN ============
 def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(handle_buttons, pattern="^(list_|vip_|paid_|back_menu)"))
-    app.add_handler(CallbackQueryHandler(handle_status, pattern="^status_"))
+    app=Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CallbackQueryHandler(handle_buttons,pattern="^(free_|vip_|utr_|back_main|ccgen|format_).*$"))
+    app.add_handler(CallbackQueryHandler(check_status,pattern="^check_.*$"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.run_polling()
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
