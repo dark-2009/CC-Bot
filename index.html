@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CC Generator</title>
+<title>CC Generator - Dark UI</title>
 <style>
 /* Reset */
 * {margin:0; padding:0; box-sizing:border-box;}
@@ -61,6 +61,32 @@ nav ul li a:hover, nav ul li a.active {
   text-shadow:0 0 10px #0ff;
 }
 
+/* Music Toggle */
+#music-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #0ff;
+  background: rgba(0,255,255,0.1);
+  color:#0ff;
+  cursor: pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  box-shadow: 0 0 10px #0ff;
+  transition:0.3s;
+  z-index:1001;
+}
+#music-toggle:hover {
+  background:#0ff;
+  color:#111;
+  box-shadow:0 0 20px #0ff;
+}
+
 /* Sections */
 section {
   min-height:100vh;
@@ -90,7 +116,6 @@ section .content {
 #home .content {
   background: none;
   box-shadow: none;
-  text-align: center;
 }
 #home h1 {
   font-size:3.5em;
@@ -138,6 +163,20 @@ section .content {
 }
 .gen-box input:focus, .gen-box select:focus {outline:2px solid #0ff;}
 
+/* Output Box */
+#output {
+  margin-top:20px;
+  padding:15px;
+  border-radius:10px;
+  background:rgba(0,255,255,0.08);
+  border:1px solid #0ff;
+  text-align:left;
+  white-space: pre-line;
+  font-family: monospace;
+  font-size:0.9em;
+  color:#0ff;
+}
+
 /* Footer */
 footer {
   padding:20px;
@@ -167,11 +206,17 @@ footer a {color:#0ff;}
   </ul>
 </nav>
 
+<!-- Music Toggle -->
+<button id="music-toggle">♫</button>
+<audio id="bg-music" loop>
+  <source src="bg-music.mp3" type="audio/mpeg">
+</audio>
+
 <!-- Hero Section -->
 <section id="home">
   <div class="content">
     <h1>Premium CC Generator</h1>
-    <p>Generate test cards with futuristic neon design.<br> Powered by BIN validation & smooth UI.</p>
+    <p>Generate test cards with futuristic neon design.<br> Sleek glassmorphism & video background.</p>
     <a href="#generator" class="btn">Start Generating</a>
   </div>
 </section>
@@ -181,13 +226,14 @@ footer a {color:#0ff;}
   <div class="content">
     <h2>CC Generator</h2>
     <div class="gen-box">
-      <input type="text" placeholder="Enter BIN (e.g. 411111)" />
-      <select>
-        <option>Quantity: 5</option>
-        <option>Quantity: 10</option>
-        <option>Quantity: 20</option>
+      <input type="text" id="bin" placeholder="Enter BIN (e.g. 411111)" />
+      <select id="quantity">
+        <option value="5">Quantity: 5</option>
+        <option value="10">Quantity: 10</option>
+        <option value="20">Quantity: 20</option>
       </select>
-      <button class="btn">Generate</button>
+      <button class="btn" onclick="generateCards()">Generate</button>
+      <div id="output"></div>
     </div>
   </div>
 </section>
@@ -196,7 +242,7 @@ footer a {color:#0ff;}
 <section id="about">
   <div class="content">
     <h2>About</h2>
-    <p>This project combines glassmorphism, neon aesthetics, and a looping video background for a modern dark UI experience.</p>
+    <p>This template is a safe, modern dark UI example with neon aesthetics, a looping video background, and smooth animations. It is meant as a design showcase only.</p>
   </div>
 </section>
 
@@ -215,5 +261,31 @@ footer a {color:#0ff;}
   <p>© 2025 CC Generator | All Rights Reserved</p>
 </footer>
 
+<script>
+// Music Toggle
+const music = document.getElementById('bg-music');
+const toggle = document.getElementById('music-toggle');
+let playing = false;
+toggle.addEventListener('click', () => {
+  if (playing) { music.pause(); toggle.textContent="♫"; }
+  else { music.play(); toggle.textContent="❚❚"; }
+  playing = !playing;
+});
+
+// Fake Card Generator (UI demo only)
+function generateCards(){
+  const bin = document.getElementById('bin').value || "411111";
+  const qty = parseInt(document.getElementById('quantity').value);
+  let result = "";
+  for(let i=0;i<qty;i++){
+    let card = bin + Math.floor(Math.random()*1000000000).toString().padStart(10,'0');
+    let month = String(Math.floor(Math.random()*12)+1).padStart(2,'0');
+    let year = String(Math.floor(Math.random()*6)+25);
+    let cvv = String(Math.floor(Math.random()*900)+100);
+    result += `Card: ${card} | ${month}/${year}\nCVV: ${cvv}\nBIN: ${bin}\nStatus: Approved\n\n`;
+  }
+  document.getElementById('output').textContent = result;
+}
+</script>
 </body>
 </html>
