@@ -15,6 +15,7 @@ HEADERS = {"Authorization": f"token {GITHUB_PAT}"}
 GIST_URL_TXN = f"https://api.github.com/gists/{GIST_ID_TXN}"
 JOIN_CHANNEL = "https://t.me/fuckincarders"
 SUPPORT_LINK = "https://t.me/alone120122"
+
 user_states = {}
 joined_users = set()
 
@@ -112,7 +113,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_dashboard(query, context)
         return
 
-    # ---------------- Free CCs ----------------
+    # Free CCs
     if data=="free_cc":
         keyboard = [
             [InlineKeyboardButton("💳 Visa", url="https://dark-2009.github.io/CC-Bot/Visa.txt")],
@@ -123,7 +124,7 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Select Free CC:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # ---------------- VIP CCs ----------------
+    # VIP CCs
     if data=="vip_menu":
         vip_text = (
 "🌟 VIP CCs 🌟\n\n"
@@ -150,73 +151,63 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(vip_text, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
+    # VIP selection → Paid prompt
     if data.startswith("vip_"):
+        user_states[user_id] = {"awaiting": "vip_payment", "vip_item": data}
+        keyboard = [
+            [InlineKeyboardButton("✅ Paid", callback_data=f"utr_{data}")],
+            [InlineKeyboardButton("🏠 Back to Home", callback_data="back_home")]
+        ]
         await query.edit_message_text(
-            f"You selected {data.replace('vip_','').replace('_',' ').title()}\n"
-            f"Pay via UPI: {UPI_ID}",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Paid", callback_data=f"utr_{data}")]])
+            f"You selected {data.replace('vip_','').replace('_',' ').title()}\nPay via UPI: {UPI_ID}",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
 
-    if data.startswith("utr_"):
-        user_states[user_id] = {"awaiting":"utr"}
+    # Paid button → ask UTR
+    if data.startswith("utr_") and user_states.get(user_id, {}).get("awaiting") in ["vip_payment"]:
+        user_states[user_id]["awaiting"] = "utr"
         await query.edit_message_text("Please enter your UTR below 👇")
         return
 
-    # ---------------- CC Generator ----------------
+    # Check UTR status
+    if data.startswith("check_utr_"):
+        utr = data.replace("check_utr_","")
+        txns = load_transactions()
+        status = txns.get(utr, {}).get("status", "Not Found")
+        keyboard = [
+            [InlineKeyboardButton("📩 Contact Support", url=SUPPORT_LINK)],
+            [InlineKeyboardButton("🏠 Back to Home", callback_data="back_home")]
+        ]
+        await query.edit_message_text(
+            f"✅ UTR `{utr}` status: {status}",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    # CC Generator
     if data=="ccgen":
-        user_states[user_id] = {"awaiting":"file_or_manual"}
         keyboard = [
             [InlineKeyboardButton("Upload BIN file", callback_data="upload_bin")],
             [InlineKeyboardButton("Manual BIN", callback_data="manual_bin")],
             [InlineKeyboardButton("🏠 Back to Home", callback_data="back_home")]
         ]
+        user_states[user_id] = {"awaiting": "bin_method"}
         await query.edit_message_text("Choose BIN input method:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
+    # Upload / manual selection
     if data=="upload_bin":
-        user_states[user_id]["awaiting"]="file"
-        await query.edit_message_text("Send your BIN file (.txt):")
+        user_states[user_id]["awaiting"] = "file"
+        await query.edit_message_text("Send your BIN file (.txt)")
         return
 
     if data=="manual_bin":
-        user_states[user_id]["awaiting"]="bin"
-        await query.edit_message_text("Enter your BIN (6-9 digits):")
+        user_states[user_id]["awaiting"] = "bin"
+        await query.edit_message_text("Enter BIN manually (6-9 digits)")
         return
 
-    if data.startswith("choose_brand_"):
-        brand = data.split("_")[-1]
-        user_states[user_id]["brand"]=brand
-        user_states[user_id]["awaiting"]="qty_buttons"
-        keyboard = [
-            [InlineKeyboardButton("5", callback_data="qty_5"),
-             InlineKeyboardButton("10", callback_data="qty_10")],
-            [InlineKeyboardButton("20", callback_data="qty_20"),
-             InlineKeyboardButton("50", callback_data="qty_50")],
-            [InlineKeyboardButton("100", callback_data="qty_100")],
-            [InlineKeyboardButton("🏠 Back to Home", callback_data="back_home")]
-        ]
-        await query.edit_message_text("Select how many CCs per BIN:", reply_markup=InlineKeyboardMarkup(keyboard))
-        return
-
-    if data.startswith("qty_") and user_states.get(user_id,{}).get("awaiting")=="qty_buttons":
-        qty = int(data.split("_")[1])
-        bins = user_states[user_id].get("bins",[])
-        brand = user_states[user_id].get("brand")
-        results=[]
-        for b in bins:
-            for _ in range(qty):
-                card=generator.generate_card(b)
-                if brand.lower() in card.lower(): results.append(card)
-        output_text="\n".join(results)
-        if len(results)>50:
-            bio=io.BytesIO(output_text.encode()); bio.name="ccgen.txt"
-            await query.message.reply_document(document=bio)
-        else:
-            await query.edit_message_text(output_text)
-        user_states.pop(user_id,None)
-        return
-
+    # Back to home
     if data=="back_home":
         await send_dashboard(query, context)
         return
@@ -230,38 +221,29 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state.get("awaiting")=="utr":
         utr = update.message.text.strip()
         txns = load_transactions()
-        txns[utr]={"user_id":user_id,"status":"pending"}
+        txns[utr] = {"user_id": user_id, "status": "pending"}
         save_transactions(txns)
         keyboard = [
             [InlineKeyboardButton("🔄 Check Status", callback_data=f"check_utr_{utr}")],
             [InlineKeyboardButton("📩 Contact Support", url=SUPPORT_LINK)]
         ]
-        await update.message.reply_text(f"✅ Your UTR `{utr}` has been submitted.", 
-                                        parse_mode="Markdown",
-                                        reply_markup=InlineKeyboardMarkup(keyboard))
-        user_states.pop(user_id,None)
+        await update.message.reply_text(
+            f"✅ Your UTR `{utr}` has been submitted.", 
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        user_states.pop(user_id, None)
         return
 
     # Manual BIN
     if state.get("awaiting")=="bin":
-        bin_number=update.message.text.strip()
+        bin_number = update.message.text.strip()
         if not (bin_number.isdigit() and 6<=len(bin_number)<=9):
             await update.message.reply_text("❌ Invalid BIN. Try again:")
             return
-        info=generator.get_bin_info(bin_number)
         user_states[user_id]["bins"]=[bin_number]
-        if info["brand"]!="Unknown":
-            user_states[user_id]["brand"]=info["brand"].lower()
-            user_states[user_id]["awaiting"]="qty_buttons"
-            keyboard = [
-                [InlineKeyboardButton("5", callback_data="qty_5"),
-                 InlineKeyboardButton("10", callback_data="qty_10")],
-                [InlineKeyboardButton("20", callback_data="qty_20"),
-                 InlineKeyboardButton("50", callback_data="qty_50")],
-                [InlineKeyboardButton("100", callback_data="qty_100")],
-                [InlineKeyboardButton("🏠 Back to Home", callback_data="back_home")]
-            ]
-            await update.message.reply_text("BIN detected. Select quantity:", reply_markup=InlineKeyboardMarkup(keyboard))
+        # Auto generate if only one bin
+        await generate_ccs_for_user(update, user_id)
         return
 
     # File BIN upload
@@ -270,28 +252,38 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         content = await file.download_as_bytearray()
         bins = [line.decode().strip() for line in content.splitlines() if line.strip().isdigit()]
         if not bins:
-            await update.message.reply_text("❌ No valid BINs found.")
+            await update.message.reply_text("❌ No valid BINs found in file.")
             return
         user_states[user_id]["bins"]=bins
-        brands = list(set(generator.get_bin_info(b)["brand"].lower() for b in bins))
-        if len(brands)==1:
-            user_states[user_id]["brand"]=brands[0]
-            user_states[user_id]["awaiting"]="qty_buttons"
-            keyboard = [
-                [InlineKeyboardButton("5", callback_data="qty_5"),
-                 InlineKeyboardButton("10", callback_data="qty_10")],
-                [InlineKeyboardButton("20", callback_data="qty_20"),
-                 InlineKeyboardButton("50", callback_data="qty_50")],
-                [InlineKeyboardButton("100", callback_data="qty_100")],
-                [InlineKeyboardButton("🏠 Back to Home", callback_data="back_home")]
-            ]
-            await update.message.reply_text("BIN detected. Select quantity:", reply_markup=InlineKeyboardMarkup(keyboard))
+        # Check if multiple brands
+        brands = set([generator.get_bin_info(b)["brand"].lower() for b in bins])
+        if len(brands) == 1:
+            # Only one brand, auto generate
+            await generate_ccs_for_user(update, user_id)
         else:
+            # Ask user to choose brand
             keyboard = [[InlineKeyboardButton(b.title(), callback_data=f"choose_brand_{b}")] for b in brands]
-            keyboard.append([InlineKeyboardButton("🏠 Back to Home", callback_data="back_home")])
-            await update.message.reply_text("Multiple brands detected. Select brand:", reply_markup=InlineKeyboardMarkup(keyboard))
-            user_states[user_id]["awaiting"]="brand"
+            await update.message.reply_text("Multiple brands detected. Choose brand:", reply_markup=InlineKeyboardMarkup(keyboard))
+            user_states[user_id]["awaiting"]="brand_selection"
         return
+
+# ---------------- CC GENERATION FUNCTION ----------------
+async def generate_ccs_for_user(update, user_id):
+    bins = user_states[user_id].get("bins",[])
+    # Default quantity
+    qty = 5
+    results = []
+    for b in bins:
+        for _ in range(qty):
+            results.append(generator.generate_card(b))
+    # Send as file if too long
+    if len(results)>50:
+        bio = io.BytesIO("\n".join(results).encode())
+        bio.name="ccgen.txt"
+        await update.message.reply_document(document=bio)
+    else:
+        await update.message.reply_text("\n".join(results))
+    user_states.pop(user_id,None)
 
 # ---------------- MAIN ----------------
 def main():
