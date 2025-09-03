@@ -182,11 +182,19 @@ async def notifier(app: Application):
 # ---------------- MAIN ----------------
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
+
+    # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("Dashboard", send_dashboard))
     app.add_handler(CallbackQueryHandler(handle_buttons))
     app.add_handler(MessageHandler(filters.CONTACT, handle_contact))
-    asyncio.create_task(notifier(app))
+
+    # Schedule notifier after app starts
+    async def on_startup(app: Application):
+        app.create_task(notifier(app))
+
+    app.post_init = on_startup  # runs after loop starts
+
     app.run_polling()
 
 if __name__ == "__main__":
