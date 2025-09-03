@@ -116,8 +116,8 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == "verify_user":
-        button = [[KeyboardButton("📱 Share Contact", request_contact=True)]]
-        await query.message.reply_text("📲 Please share your phone number to verify:",
+        button = [[KeyboardButton("❇️ Verify", request_contact=True)]]
+        await query.message.reply_text("",
                                        reply_markup=ReplyKeyboardMarkup(button, one_time_keyboard=True, resize_keyboard=True))
         return
 
