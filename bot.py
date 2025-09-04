@@ -103,7 +103,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
-    await send_dashboard(update, context)
+    await update.message.reply_text(
+        "✅ You are already verified! Use 🏠 Dashboard below:",
+        reply_markup=ReplyKeyboardMarkup([["🏠 Dashboard"]], resize_keyboard=True)
+    )
 
 # ---------------- BUTTON HANDLERS ----------------
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -127,7 +130,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Free CCs
     if data == "free_cc":
         keyboard = [
             [InlineKeyboardButton("💳 Visa", url="https://dark-2009.github.io/CC-Bot/Visa.txt")],
@@ -138,7 +140,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Choose Free CCs:", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # CC-GEN
     if data == "ccgen":
         keyboard = [
             [InlineKeyboardButton("📂 Upload BIN file", callback_data="upload_bin")],
@@ -193,7 +194,6 @@ async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_states.pop(user_id, None)
         return
 
-    # VIP CCs
     if data == "vip_menu":
         vip_text = """
 🌟 VIP CCs 🌟
@@ -320,6 +320,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_states.pop(user_id, None)
         return
 
+    if text == "🏠 Dashboard":
+        await send_dashboard(update, context)
+
 # ---------------- CONTACT ----------------
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
@@ -341,8 +344,8 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Admin notify failed: {e}")
 
     await update.message.reply_text(
-        "✅ Verification successful!",
-        reply_markup=ReplyKeyboardMarkup([["🏠 Dashboard"]], resize_keyboard=True)
+        "✅ Verification successful! Opening your Dashboard...",
+        reply_markup=ReplyKeyboardRemove()
     )
     await send_dashboard(update, context)
 
