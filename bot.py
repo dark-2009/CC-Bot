@@ -261,6 +261,17 @@ SPL: UQFS1UuLrpVQBfo78a8nFQCzwEK7X6QipNXw1SVciQk
         await send_dashboard(query, context)
         return
 
+    if data.startswith("check_"):
+        tid = data.split("_", 1)[1]
+        txns = load_transactions()
+        status = txns.get(tid, {}).get("status", "pending")
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📩 Check Status", callback_data=f"check_{tid}")],
+            [InlineKeyboardButton("🆘 Contact Support", url=SUPPORT_LINK)]
+        ])
+        await query.message.reply_text(f"Status for `{tid}`: **{status.upper()}**",
+                                       parse_mode="Markdown", reply_markup=kb)
+
 # ---------------- TEXT HANDLER ----------------
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -373,7 +384,11 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_buttons))
     app.add_handler(MessageHandler(filters.CONTACT, handle_contact))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    asyncio.create_task(notifier(app))
+
+    async def on_startup(app: Application):
+        app.create_task(notifier(app))
+
+    app.post_init = on_startup
     app.run_polling()
 
 if __name__ == "__main__":
