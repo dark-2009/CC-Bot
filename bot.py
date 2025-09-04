@@ -98,32 +98,218 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if user_id not in verified_users:
         keyboard = [[InlineKeyboardButton("Verify", callback_data="verify_user")]]
-        await update.message.reply_text("🔒 Please verify your account to continue:",
-                                        reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text(
+            "🔒 Please verify your account to continue:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return
     await send_dashboard(update, context)
 
+# ---------------- BUTTON HANDLERS ----------------
 async def handle_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
+    data = query.data
 
-    if query.data == "joined_channel":
+    if data == "joined_channel":
         joined_users.add(user_id)
         keyboard = [[InlineKeyboardButton("Verify", callback_data="verify_user")]]
         await query.message.reply_text("🔒 Please verify your account to continue:",
                                        reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    if query.data == "verify_user":
-        # Show only the contact button with the new label
-        button = [[KeyboardButton("❇️ Human Verification", request_contact=True)]]
+    if data == "verify_user":
+        button = [[KeyboardButton("📱 Verify", request_contact=True)]]
         await query.message.reply_text(
-            " ",  # empty message or you can just skip this line to not send anything
+            "Please verify yourself to continue:",
             reply_markup=ReplyKeyboardMarkup(button, one_time_keyboard=True, resize_keyboard=True)
         )
         return
 
+    # Free CCs
+    if data == "free_cc":
+        keyboard = [
+            [InlineKeyboardButton("💳 Visa", url="https://dark-2009.github.io/CC-Bot/Visa.txt")],
+            [InlineKeyboardButton("💳 Mastercard", url="https://dark-2009.github.io/CC-Bot/Mastercard.txt")],
+            [InlineKeyboardButton("💳 Amex", url="https://dark-2009.github.io/CC-Bot/Amex.txt")],
+            [InlineKeyboardButton("◀️ Back", callback_data="back_home")]
+        ]
+        await query.message.reply_text("Choose Free CCs:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # CC-GEN
+    if data == "ccgen":
+        keyboard = [
+            [InlineKeyboardButton("📂 Upload BIN file", callback_data="upload_bin")],
+            [InlineKeyboardButton("⌨️ Manual BIN", callback_data="manual_bin")],
+            [InlineKeyboardButton("◀️ Back", callback_data="back_home")]
+        ]
+        await query.message.reply_text("Select BIN input method:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    if data == "upload_bin":
+        user_states[user_id] = {"awaiting": "file"}
+        await query.message.reply_text("Send me your BIN file (.txt)")
+        return
+
+    if data == "manual_bin":
+        user_states[user_id] = {"awaiting": "bin"}
+        await query.message.reply_text("Enter your BIN manually (6-9 digits)")
+        return
+
+    if data.startswith("choose_brand_"):
+        brand = data.split("_")[-1]
+        user_states[user_id]["brand"] = brand
+        user_states[user_id]["awaiting"] = "qty"
+        keyboard = [
+            [InlineKeyboardButton("5", callback_data="qty_5"),
+             InlineKeyboardButton("10", callback_data="qty_10")],
+            [InlineKeyboardButton("20", callback_data="qty_20"),
+             InlineKeyboardButton("50", callback_data="qty_50")],
+            [InlineKeyboardButton("100", callback_data="qty_100")],
+        ]
+        await query.message.reply_text("Select how many CCs to generate:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    if data.startswith("qty_") and user_states.get(user_id, {}).get("awaiting") == "qty":
+        qty = int(data.split("_")[1])
+        bins = user_states[user_id].get("bins", [])
+        brand = user_states[user_id].get("brand")
+        results = []
+        for b in bins:
+            info = generator.get_bin_info(b)
+            if brand and info["brand"].lower() != brand:
+                continue
+            for _ in range(qty):
+                results.append(generator.generate_card(b))
+        text = "\n".join(results)
+        if len(text) > 4000:
+            bio = io.BytesIO(text.encode())
+            bio.name = "ccgen.txt"
+            await query.message.reply_document(bio)
+        else:
+            await query.message.reply_text(text)
+        user_states.pop(user_id, None)
+        return
+
+    # VIP CCs
+    if data == "vip_menu":
+        vip_text = """
+🌟 VIP CCs 🌟
+
+💎 Very Premium
+- Amex Platinum: $22
+- Visa Gold: $20
+- Amex Gold: $20
+- Mastercard Platinum: $18
+
+✨ Good Category
+- Mastercard: $10
+- Visa: $10
+- Amex: $10
+"""
+        keyboard = [
+            [InlineKeyboardButton("Amex Platinum $22", callback_data="vip_22")],
+            [InlineKeyboardButton("Visa Gold $20", callback_data="vip_20")],
+            [InlineKeyboardButton("Amex Gold $20", callback_data="vip_20")],
+            [InlineKeyboardButton("Mastercard Platinum $18", callback_data="vip_18")],
+            [InlineKeyboardButton("Mastercard $10", callback_data="vip_10")],
+            [InlineKeyboardButton("Visa $10", callback_data="vip_10")],
+            [InlineKeyboardButton("Amex $10", callback_data="vip_10")],
+            [InlineKeyboardButton("◀️ Back", callback_data="back_home")]
+        ]
+        await query.message.reply_text(vip_text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    if data.startswith("vip_"):
+        price = data.split("_")[1]
+        user_states[user_id] = {"awaiting": "payment", "price": price}
+        keyboard = [
+            [InlineKeyboardButton("💵 UPI (India)", callback_data="pay_upi")],
+            [InlineKeyboardButton("🌐 Crypto (International)", callback_data="pay_crypto")],
+            [InlineKeyboardButton("◀️ Back", callback_data="back_home")]
+        ]
+        await query.message.reply_text(f"Choose payment method for ${price}:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    if data == "pay_upi":
+        price = user_states[user_id]["price"]
+        kb = ReplyKeyboardMarkup([["✅ Paid", "◀️ Cancel"]], resize_keyboard=True)
+        user_states[user_id]["awaiting"] = "utr"
+        await query.message.reply_text(f"Send ₹{price} to UPI: {UPI_ID}\nThen click ✅ Paid.", reply_markup=kb)
+        return
+
+    if data == "pay_crypto":
+        price = user_states[user_id]["price"]
+        text = f"""Send ${price} to any of the USDT addresses:
+
+ERC-20: 0x7AF25Fa408a2f4152b2450535Ea7Ce13520b7A37  
+
+TRC-20: TGUSsmMDg2Dgn9zgSKeyPoQEmj9vMes6GV  
+
+BEP-20: 0x7AF25Fa408a2f4152b2450535Ea7Ce13520b7A37  
+
+SPL: UQFS1UuLrpVQBfo78a8nFQCzwEK7X6QipNXw1SVciQk
+"""
+        kb = ReplyKeyboardMarkup([["✅ Paid", "◀️ Cancel"]], resize_keyboard=True)
+        user_states[user_id]["awaiting"] = "txhash"
+        await query.message.reply_text(text, reply_markup=kb)
+        return
+
+    if data == "back_home":
+        await send_dashboard(query, context)
+        return
+
+# ---------------- TEXT HANDLER ----------------
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    state = user_states.get(user_id, {})
+    text = update.message.text.strip()
+
+    if text == "◀️ Cancel":
+        user_states.pop(user_id, None)
+        await update.message.reply_text("❌ Cancelled.", reply_markup=ReplyKeyboardRemove())
+        await send_dashboard(update, context)
+        return
+
+    if text == "✅ Paid":
+        if state.get("awaiting") == "utr":
+            await update.message.reply_text("Please enter your UTR number:", reply_markup=ReplyKeyboardRemove())
+            user_states[user_id]["awaiting"] = "utr_value"
+            return
+        elif state.get("awaiting") == "txhash":
+            await update.message.reply_text("Please enter your Tx Hash:", reply_markup=ReplyKeyboardRemove())
+            user_states[user_id]["awaiting"] = "txhash_value"
+            return
+
+    if state.get("awaiting") == "utr_value":
+        utr = text
+        txns = load_transactions()
+        txns[utr] = {"user_id": user_id, "status": "pending"}
+        save_transactions(txns)
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📩 Check Status", callback_data=f"check_{utr}")],
+            [InlineKeyboardButton("🆘 Contact Support", url=SUPPORT_LINK)]
+        ])
+        await update.message.reply_text(f"✅ UTR `{utr}` submitted.", parse_mode="Markdown", reply_markup=kb)
+        user_states.pop(user_id, None)
+        return
+
+    if state.get("awaiting") == "txhash_value":
+        tx = text
+        txns = load_transactions()
+        txns[tx] = {"user_id": user_id, "status": "pending"}
+        save_transactions(txns)
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📩 Check Status", callback_data=f"check_{tx}")],
+            [InlineKeyboardButton("🆘 Contact Support", url=SUPPORT_LINK)]
+        ])
+        await update.message.reply_text(f"✅ Tx Hash `{tx}` submitted.", parse_mode="Markdown", reply_markup=kb)
+        user_states.pop(user_id, None)
+        return
+
+# ---------------- CONTACT ----------------
 async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     contact = update.message.contact
@@ -143,8 +329,10 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Admin notify failed: {e}")
 
-    await update.message.reply_text("✅ Verification successful!",
-                                    reply_markup=ReplyKeyboardMarkup([["🏠 Dashboard"]], resize_keyboard=True))
+    await update.message.reply_text(
+        "✅ Verification successful!",
+        reply_markup=ReplyKeyboardMarkup([["🏠 Dashboard"]], resize_keyboard=True)
+    )
     await send_dashboard(update, context)
 
 # ---------------- DASHBOARD ----------------
@@ -155,13 +343,11 @@ async def send_dashboard(update, context):
         [InlineKeyboardButton("🌟 VIP CCs", callback_data="vip_menu")]
     ]
     if hasattr(update, "callback_query"):
-        await update.callback_query.message.reply_text("🏠 Dashboard:",
-                                                       reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.callback_query.message.reply_text("🏠 Dashboard:", reply_markup=InlineKeyboardMarkup(keyboard))
     else:
-        await update.message.reply_text("🏠 Dashboard:",
-                                        reply_markup=InlineKeyboardMarkup(keyboard))
+        await update.message.reply_text("🏠 Dashboard:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-# ---------------- BACKGROUND NOTIFIER ----------------
+# ---------------- NOTIFIER ----------------
 async def notifier(app: Application):
     global last_statuses
     while True:
@@ -172,11 +358,8 @@ async def notifier(app: Application):
             if not uid: continue
             if last_statuses.get(tid) != status and status in ["approved","rejected"]:
                 try:
-                    await app.bot.send_message(
-                        uid,
-                        f"🔔 Your transaction `{tid}` has been **{status.upper()}**.",
-                        parse_mode="Markdown"
-                    )
+                    await app.bot.send_message(uid, f"🔔 Your transaction `{tid}` has been **{status.upper()}**.",
+                                               parse_mode="Markdown")
                 except Exception as e:
                     logger.error(f"Notify failed: {e}")
             last_statuses[tid] = status
@@ -185,19 +368,12 @@ async def notifier(app: Application):
 # ---------------- MAIN ----------------
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
-
-    # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("Dashboard", send_dashboard))
     app.add_handler(CallbackQueryHandler(handle_buttons))
     app.add_handler(MessageHandler(filters.CONTACT, handle_contact))
-
-    # Schedule notifier after app starts
-    async def on_startup(app: Application):
-        app.create_task(notifier(app))
-
-    app.post_init = on_startup  # runs after loop starts
-
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    asyncio.create_task(notifier(app))
     app.run_polling()
 
 if __name__ == "__main__":
